@@ -36,12 +36,12 @@ curl -sI $url | grep -q '301 MOVED'
 printStatus ; echo "$url should redirect to https://omg.com"
 
 url='localhost:8080/url/omg'
-curl -Ss -XDELETE "localhost:8080/url/omg" \
+curl -Ss -XDELETE "$url" \
     -H 'Content-Type: application/json' \
     -H 'API-KEY: BAD-KEY-JUNK-HERE' | grep -q 'API-KEY is not valid'
 printStatus ; echo "$url should not DELETE if API-KEY is incorrect"
 
-curl -Ss -XDELETE "localhost:8080/url/omg" \
+curl -Ss -XDELETE "$url" \
     -H 'Content-Type: application/json' \
     -H 'API-KEY: TEST-API-KEY' | grep -q 'omg has been removed'
 printStatus ; echo "$url should DELETE given valid API-KEY"
