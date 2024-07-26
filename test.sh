@@ -1,35 +1,51 @@
 #!/usr/bin/env bash
 
-echo
-echo "--->verify static dict entries work"
-curl -I localhost:8080/good
+curl -s localhost:8080 > /dev/null
 
-echo
-echo "--->pre-add, verify what we are about to add does not exist"
-curl -I localhost:8080/omg
+if [ $? -ne 0 ]; then
+    echo "❌ Server is not running"
+    exit 1
+fi
 
-echo
-echo "---> POST: Create a new user"
-curl -Ss -XPOST "localhost:8080/url" \
+# helper function for fancy status outputs
+printStatus() {
+    if [ $? -eq 0 ]; then
+        echo -n "✅ "
+    else
+        echo -n "❌ "
+    fi
+}
+
+url='localhost:8080/good'
+curl -sI $url  | grep -q '301 MOVED'
+printStatus ; echo "$url should redirect"
+
+url='localhost:8080/omg'
+curl -sI $url | grep -q '200 OK'
+printStatus ; echo "$url should not redirect"
+
+url='localhost:8080/url'
+curl -Ss -XPOST "$url" \
     -H 'Content-Type: application/json' \
-    -d '{"code": "omg", "url": "https://omg.com"}'
+    -H 'API-KEY: TEST-API-KEY' \
+    -d '{"code": "omg", "url": "https://omg.com"}' | grep -q 'omg is now pointing to: https://omg.com'
+printStatus ; echo "$url should POST and create 'omg' as a new short url"
 
-echo
-echo "---> verify it does exist"
-curl -I localhost:8080/omg
+url='localhost:8080/omg'
+curl -sI $url | grep -q '301 MOVED'
+printStatus ; echo "$url should redirect to https://omg.com"
 
-echo
-echo "--->DELETE: Remove a user - with a bad API KEY"
+url='localhost:8080/url/omg'
 curl -Ss -XDELETE "localhost:8080/url/omg" \
     -H 'Content-Type: application/json' \
-    -H 'API-KEY: BAD-KEY-JUNK-HERE'
+    -H 'API-KEY: BAD-KEY-JUNK-HERE' | grep -q 'API-KEY is not valid'
+printStatus ; echo "$url should not DELETE if API-KEY is incorrect"
 
-echo
-echo "--->DELETE: Remove a user - with a good API KEY"
 curl -Ss -XDELETE "localhost:8080/url/omg" \
     -H 'Content-Type: application/json' \
-    -H 'API-KEY: TEST-API-KEY'
+    -H 'API-KEY: TEST-API-KEY' | grep -q 'omg has been removed'
+printStatus ; echo "$url should DELETE given valid API-KEY"
 
-echo
-echo "--->verify it does not exist"
-curl -I localhost:8080/omg
+url='localhost:8080/omg'
+curl -sI $url | grep -q '200 OK'
+printStatus ; echo "$url should have been deleted and no longer redirect"
